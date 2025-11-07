@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPOT Serial Number Generator</title>
+  <!-- Load Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom error styling */
+    #result.error {
+      border-color: #ef4444; /* red-500 */
+      color: #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* Smooth focus ring */
+    .focus-ring {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen flex items-center justify-center p-4">
+
+  <!-- Main Application Card -->
+  <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
+    
+    <!-- Logo -->
+    <div class="flex justify-center mb-5">
+      <img src="logo.png" alt="SPOT Logo" class="h-16 w-auto object-contain" onerror="this.classList.add('hidden')" />
+    </div>
+
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">
+      SPOT Serial Number Generator
+    </h1>
+
+    <!-- Form Grid -->
+    <div class="grid grid-cols-[auto,1fr] gap-x-4 gap-y-5 items-center">
+      <!-- 1. Event Year -->
+      <label for="year" class="text-sm font-medium text-gray-700 text-right">1. Event Year:</label>
+      <input type="number" id="year" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+
+      <!-- 2. Event Type -->
+      <label for="eventType" class="text-sm font-medium text-gray-700 text-right">2. Event Type:</label>
+      <select id="eventType" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <!-- Filled by JS -->
+      </select>
+
+      <!-- 3. Event Number -->
+      <label for="eventNum" class="text-sm font-medium text-gray-700 text-right">3. Event Number:</label>
+      <input type="number" id="eventNum" value="1" min="1" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+
+      <!-- 4. Participation Type -->
+      <label for="partType" class="text-sm font-medium text-gray-700 text-right">4. Participation:</label>
+      <select id="partType" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <!-- Filled by JS -->
+      </select>
+
+      <!-- 5. Serial Number -->
+      <label for="serial" class="text-sm font-medium text-gray-700 text-right">5. Serial Number:</label>
+      <input type="number" id="serial" value="1" min="1" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+    </div>
+
+    <!-- Generate Button -->
+    <button id="generateButton" class="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md hover:shadow-lg">
+      Generate Serial Number
+    </button>
+
+    <!-- Result Display -->
+    <input type="text" id="result" readonly class="w-full mt-5 bg-gray-50 text-gray-900 font-mono text-lg text-center py-3 px-4 border-2 border-gray-300 rounded-xl transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+
+    <!-- Error Message -->
+    <p id="error-message" class="text-red-600 text-center text-sm h-5 mt-1"></p>
+
+    <!-- Copy Button -->
+    <button id="copyButton" class="w-full mt-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white font-semibold py-3 px-4 rounded-xl hover:from-gray-800 hover:to-black focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md hover:shadow-lg">
+      Copy to Clipboard
+    </button>
+
+    <!-- Copyright Footer -->
+    <div class="mt-8 text-center text-gray-500 text-sm">
+      © El-Abbasi
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // --- Data Mappings ---
+    const EVENT_TYPES = {
+      "BLS": "1",
+      "Soft Skills": "2",
+      "Intern": "3",
+      "Pre-internal": "4",
+      "ALS": "4",
+      "Fracture workshop": "5",
+      "Organizational workshop": "6",
+      "POT or TOT": "7",
+      "Psychiatry": "8",
+      "Orientation": "9",
+      "Seminar": "0",
+      "Campaign \"AIC\"": "11",
+      "Computer or Language course": "12"
+    };
+
+    const PARTICIPATION_TYPES = {
+      "Audience": "1",
+      "LC": "2",
+      "HR Representative": "11",
+      "PR Representative": "12",
+      "Media Representative": "13",
+      "Trainer": "3",
+      "Co-trainer": "4",
+      "Organization": "5",
+      "Facilitator or Instructor": "6",
+      "Certificate of Honor": "7"
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const yearEl = document.getElementById("year");
+      const eventTypeEl = document.getElementById("eventType");
+      const eventNumEl = document.getElementById("eventNum");
+      const partTypeEl = document.getElementById("partType");
+      const serialEl = document.getElementById("serial");
+      const generateBtn = document.getElementById("generateButton");
+      const resultEl = document.getElementById("result");
+      const copyBtn = document.getElementById("copyButton");
+      const errorEl = document.getElementById("error-message");
+
+      // Set current year
+      yearEl.value = new Date().getFullYear();
+
+      // Populate dropdowns
+      for (const [name, code] of Object.entries(EVENT_TYPES)) {
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = name;
+        eventTypeEl.appendChild(option);
+      }
+
+      for (const [name, code] of Object.entries(PARTICIPATION_TYPES)) {
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = name;
+        partTypeEl.appendChild(option);
+      }
+
+      // Event listeners
+      generateBtn.addEventListener("click", generateSerial);
+      copyBtn.addEventListener("click", copyToClipboard);
+
+      function generateSerial() {
+        errorEl.textContent = "";
+        resultEl.value = "";
+        resultEl.classList.remove("error");
+
+        try {
+          const yearStr = yearEl.value.trim();
+          if (!/^\d{2,}$/.test(yearStr)) throw new Error("Invalid Year. Must be at least 2 digits.");
+          const yearCode = yearStr.slice(-2);
+
+          const eventCode = eventTypeEl.value;
+          if (!eventCode) throw new Error("Please select an Event Type.");
+
+          const eventNumStr = eventNumEl.value.trim();
+          if (!/^\d+$/.test(eventNumStr) || parseInt(eventNumStr) < 1) throw new Error("Invalid Event Number.");
+          const eventNumCode = eventNumStr;
+
+          const partCode = partTypeEl.value;
+          if (!partCode) throw new Error("Please select a Participation Type.");
+
+          const serialStr = serialEl.value.trim();
+          if (!/^\d+$/.test(serialStr) || parseInt(serialStr) < 1) throw new Error("Invalid Serial Number.");
+          const serialCode = serialStr.padStart(3, '0');
+
+          const finalSerial = `${yearCode}${eventCode}${eventNumCode}${partCode}${serialCode}`;
+          resultEl.value = finalSerial;
+        } catch (e) {
+          errorEl.textContent = e.message;
+          resultEl.classList.add("error");
+        }
+      }
+
+      function copyToClipboard() {
+        const serial = resultEl.value;
+        if (!serial || resultEl.classList.contains("error")) return;
+
+        navigator.clipboard?.writeText(serial).then(() => {
+          const original = copyBtn.textContent;
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => copyBtn.textContent = original, 2000);
+        }).catch(() => {
+          // Fallback
+          const temp = document.createElement('textarea');
+          temp.value = serial;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          document.body.removeChild(temp);
+          errorEl.textContent = "Copied manually.";
+          setTimeout(() => errorEl.textContent = "", 2000);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
