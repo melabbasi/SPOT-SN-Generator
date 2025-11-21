@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SPOT Serial Number Generator</title>
@@ -86,6 +87,23 @@
       قواعد إنشاء الشهادات (PDF)
     </button>
     </a>
+    <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">Bulk Mode (Excel)</span>
+        </div>
+    </div>
+
+    <div class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700 text-center mb-1">Upload Names List (No Headers)</label>
+        <input type="file" id="uploadExcel" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+        
+        <button id="processExcelBtn" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out shadow-md hover:shadow-lg">
+            Generate & Download
+        </button>
+    </div>
 
     <!-- Copyright Footer -->
     <div class="mt-8 text-center text-gray-500 text-sm">
@@ -211,8 +229,104 @@
         });
       }
     });
+    // --- Bulk Excel Logic (Updated Filename) ---
+      const processBtn = document.getElementById("processExcelBtn");
+      const fileInput = document.getElementById("uploadExcel");
+
+      processBtn.addEventListener("click", () => {
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please upload an Excel file first!");
+          return;
+        }
+
+        // تعريف العناصر (Inputs)
+        const yearEl = document.getElementById("year");
+        const eventTypeEl = document.getElementById("eventType");
+        const eventNumEl = document.getElementById("eventNum");
+        const partTypeEl = document.getElementById("partType");
+        const serialEl = document.getElementById("serial");
+
+        let baseCodePrefix = "";
+        let startSerialInt = 1;
+        let fileName = "Attendance.xlsx"; // Default
+
+        try {
+          const yearStr = yearEl.value.trim();
+          if (!/^\d{2,}$/.test(yearStr)) throw new Error("Invalid Year.");
+          const yearCode = yearStr.slice(-2);
+
+          const eventCode = eventTypeEl.value;
+          if (!eventCode) throw new Error("Select Event Type.");
+
+          const eventNumStr = eventNumEl.value.trim();
+          if (!/^\d+$/.test(eventNumStr)) throw new Error("Invalid Event Num.");
+          
+          const partCode = partTypeEl.value;
+          if (!partCode) throw new Error("Select Participation.");
+
+          const serialStr = serialEl.value.trim();
+          if (!/^\d+$/.test(serialStr)) throw new Error("Invalid Start Serial.");
+          
+          startSerialInt = parseInt(serialStr); 
+          
+          // تكوين الجزء الثابت من الكود
+          baseCodePrefix = `${yearCode}${eventCode}${eventNumStr}${partCode}`;
+
+          // --- 1. تجهيز اسم الملف (New Logic) ---
+          // سحب النص الظاهر في القائمة بدلاً من القيمة الرقمية
+          const eventNameText = eventTypeEl.options[eventTypeEl.selectedIndex].text;
+          const partNameText = partTypeEl.options[partTypeEl.selectedIndex].text;
+          
+          // تنظيف الاسم من أي علامات قد تمنع حفظ الملف (مثل / أو \)
+          const safeEventName = eventNameText.replace(/[\/\\?%*:|"<>]/g, '-');
+          const safePartName = partNameText.replace(/[\/\\?%*:|"<>]/g, '-');
+
+          // تركيب الاسم: {Participation} - {Event Type} - {Event Number}.xlsx
+          // ملاحظة: استخدمت رقم الحدث (Event Number) كمعرف للملف
+          fileName = `${safePartName} - ${safeEventName} - ${eventNumStr}.xlsx`;
+
+        } catch (e) {
+          alert("Error in Form Data: " + e.message);
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+          const finalData = [];
+          finalData.push(["Name", "Serial", "DESC"]);
+
+          let counter = 0;
+          jsonData.forEach(row => {
+            const name = row[0]; 
+            if (name && typeof name === 'string' && name.trim() !== "") {
+              const currentSerialNum = startSerialInt + counter;
+              const currentSerialStr = currentSerialNum.toString().padStart(3, '0');
+              const fullID = `${baseCodePrefix}${currentSerialStr}`;
+              finalData.push([name.trim(), fullID, ""]);
+              counter++;
+            }
+          });
+
+          const newWs = XLSX.utils.aoa_to_sheet(finalData);
+          const newWb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(newWb, newWs, "Attendance");
+          
+          // --- 2. الحفظ بالاسم الجديد ---
+          XLSX.writeFile(newWb, fileName);
+          
+          alert(`Done! File saved as: ${fileName}`);
+        };
+        
+        reader.readAsArrayBuffer(file);
+      });
   </script>
 </body>
 
 </html>
-
