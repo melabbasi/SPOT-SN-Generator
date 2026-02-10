@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPOT Serial Number Generator</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Glassmorphism & Custom Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            /* Default Dark Mode Background */
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            background-color: #111827;
+            min-height: 100vh;
+            transition: background 0.3s ease;
+        }
+
+        /* Light Mode Overrides */
+        body.light-mode {
+            background-color: #f3f4f6;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(210, 100%, 96%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(220, 100%, 96%, 1) 0, transparent 50%);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .input-premium {
+            transition: all 0.3s ease;
+        }
+
+        .input-premium:focus {
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
+        }
+    </style>
+</head>
+
+<body
+    class="text-gray-900 dark:text-gray-100 antialiased py-8 px-4 sm:px-6 lg:px-8 flex flex-col items-center relative transition-colors duration-300">
+
+    <!-- Theme Toggle -->
+    <div class="absolute top-4 right-4 z-50">
+        <button id="themeToggle"
+            class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition backdrop-blur-md border border-white/20">
+            <svg id="moonIcon" class="w-6 h-6 text-yellow-300 hidden" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+            <svg id="sunIcon" class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                </path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Header / Logo Area -->
+    <header class="w-full max-w-4xl flex flex-col items-center mb-8 animate-fade-in">
+        <div class="bg-white/10 p-4 rounded-full mb-4 shadow-2xl ring-1 ring-white/20 backdrop-blur-md">
+            <a href="index.html">
+                <img src="logo.png" alt="SPOT Logo"
+                    class="h-16 w-auto object-contain drop-shadow-md hover:scale-105 transition"
+                    onerror="this.classList.add('hidden')" />
+            </a>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white text-center tracking-tight mb-2">
+            SPOT Serial Generator
+        </h1>
+        <p class="text-blue-600 dark:text-blue-200 text-center text-sm font-medium opacity-80">Streamlined Certificate
+            Management</p>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 animate-slide-up">
+
+        <!-- Sidebar Navigation (Desktop) / Top Bar (Mobile) -->
+        <nav class="lg:col-span-3 lg:order-last space-y-4">
+            <!-- Navigation Card -->
+            <div class="glass-panel rounded-2xl p-5 shadow-2xl shadow-black/10">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Quick Access</h3>
+                <div class="grid grid-cols-3 lg:grid-cols-1 gap-3">
+                    <a href="index.html"
+                        class="flex flex-col lg:flex-row items-center p-3 rounded-xl hover:bg-emerald-50 transition group">
+                        <div
+                            class="bg-emerald-100 p-2 rounded-lg mb-2 lg:mb-0 lg:mr-3 group-hover:bg-emerald-200 transition">
+                            <svg class="w-8 h-8 text-emerald-600 p-1" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                                </path>
+                            </svg>
+                        </div>
+                        <span
+                            class="text-sm font-medium text-gray-700 group-hover:text-emerald-700 text-center lg:text-left">Home</span>
+                    </a>
+                    <a href="team_splitter.html"
+                        class="flex flex-col lg:flex-row items-center p-3 rounded-xl hover:bg-blue-50 transition group">
+                        <div class="bg-blue-100 p-2 rounded-lg mb-2 lg:mb-0 lg:mr-3 group-hover:bg-blue-200 transition">
+                            <img src="teams.png" class="w-8 h-8 object-contain" alt="Teams">
+                        </div>
+                        <span
+                            class="text-sm font-medium text-gray-700 group-hover:text-blue-700 text-center lg:text-left">Team
+                            Splitter</span>
+                    </a>
+                    <a href="certificates.html"
+                        class="flex flex-col lg:flex-row items-center p-3 rounded-xl hover:bg-purple-50 transition group">
+                        <div
+                            class="bg-purple-100 p-2 rounded-lg mb-2 lg:mb-0 lg:mr-3 group-hover:bg-purple-200 transition">
+                            <img src="certificates.png" class="w-8 h-8 object-contain" alt="Certificates">
+                        </div>
+                        <span
+                            class="text-sm font-medium text-gray-700 group-hover:text-purple-700 text-center lg:text-left">Certificates</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- History Card -->
+            <div id="historyPanel" class="glass-panel rounded-2xl p-5 shadow-2xl shadow-black/10 mt-4 hidden">
+                <h3
+                    class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                    Recent IDs
+                    <button id="clearHistory" class="text-xs text-red-400 hover:text-red-500">Clear</button>
+                </h3>
+                <ul id="historyList" class="space-y-2">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Generator Section -->
+        <div class="lg:col-span-9 space-y-6">
+
+            <!-- Single Generator Card -->
+            <div class="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/20 relative overflow-hidden">
+                <div
+                    class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none">
+                </div>
+
+                <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                    <span
+                        class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center mr-3 text-sm shadow-lg">01</span>
+                    Single Generation
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Column 1 -->
+                    <div class="space-y-5">
+                        <div class="group">
+                            <label for="year"
+                                class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Event
+                                Year</label>
+                            <input type="number" id="year"
+                                class="input-premium w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none placeholder-gray-400 text-gray-700 font-medium"
+                                placeholder="2024">
+                        </div>
+
+                        <div class="group">
+                            <label for="eventType"
+                                class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Event
+                                Type</label>
+                            <div class="relative">
+                                <select id="eventType"
+                                    class="input-premium w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none appearance-none text-gray-700 font-medium cursor-pointer">
+                                    <!-- Populated by JS -->
+                                </select>
+                                <div
+                                    class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                        <path
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="group">
+                            <label for="eventNum"
+                                class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Event
+                                Number</label>
+                            <input type="number" id="eventNum" value="1" min="1"
+                                class="input-premium w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none placeholder-gray-400 text-gray-700 font-medium">
+                        </div>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="space-y-5">
+                        <div class="group">
+                            <label for="partType"
+                                class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Participation
+                                Role</label>
+                            <div class="relative">
+                                <select id="partType"
+                                    class="input-premium w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none appearance-none text-gray-700 font-medium cursor-pointer">
+                                    <!-- Populated by JS -->
+                                </select>
+                                <div
+                                    class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                        <path
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="group">
+                            <label for="serial"
+                                class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Individual
+                                Serial</label>
+                            <input type="number" id="serial" value="1" min="1"
+                                class="input-premium w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none placeholder-gray-400 text-gray-700 font-medium transition-all">
+                        </div>
+
+                        <button id="generateButton"
+                            class="w-full mt-7 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-lg shadow-blue-500/30 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Generate ID
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Result Area -->
+                <div class="bg-gray-900 rounded-2xl p-6 relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition">
+                        <button id="copyButton"
+                            class="text-gray-400 hover:text-white transition p-2 rounded-lg hover:bg-white/10"
+                            title="Copy to Clipboard">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Generated Serial
+                        ID</label>
+                    <input type="text" id="result" readonly
+                        class="w-full bg-transparent border-none text-3xl font-mono text-white placeholder-gray-700 focus:ring-0 p-0 tracking-widest"
+                        placeholder="Waiting..." />
+
+                    <div id="error-message" class="text-red-400 text-sm mt-3 h-5 font-medium"></div>
+                </div>
+            </div>
+
+            <!-- Bulk Generator Card -->
+            <div class="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/20">
+                <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                    <span
+                        class="w-8 h-8 rounded-lg bg-gradient-to-br from- emerald-500 to-teal-600 bg-emerald-600 text-white flex items-center justify-center mr-3 text-sm shadow-lg">02</span>
+                    Bulk Processing (Excel)
+                </h2>
+
+                <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-6">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="w-full md:w-2/3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Upload Names List
+                                (.xlsx)</label>
+                            <input type="file" id="uploadExcel" accept=".xlsx, .xls"
+                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 transition cursor-pointer" />
+                            <p class="text-xs text-gray-400 mt-2">File should contain names in the first column (No
+                                headers recommended).</p>
+                        </div>
+                        <div class="w-full md:w-auto">
+                            <button id="processExcelBtn"
+                                class="w-full whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200">
+                                Download Processed File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center text-white/40 text-sm pb-8">
+                © Created by Mohamed El-Abbasi for SPOT
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Theme Logic ---
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+
+        // Check local storage or system preference
+        let isDark = localStorage.getItem('theme') !== 'light';
+
+        function updateTheme() {
+            if (isDark) {
+                document.body.classList.remove('light-mode');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                document.body.classList.add('light-mode');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            isDark = !isDark;
+            updateTheme();
+        });
+
+        // Initialize Theme
+        updateTheme();
+
+        // --- History Logic ---
+        const historyPanel = document.getElementById('historyPanel');
+        const historyList = document.getElementById('historyList');
+        const clearHistoryBtn = document.getElementById('clearHistory');
+
+        function updateHistoryUI() {
+            const history = JSON.parse(localStorage.getItem('serialHistory') || '[]');
+            historyList.innerHTML = '';
+
+            if (history.length > 0) {
+                historyPanel.classList.remove('hidden');
+                history.forEach(id => {
+                    const li = document.createElement('li');
+                    li.className = "flex items-center justify-between text-sm p-2 rounded hover:bg-gray-100 transition group cursor-pointer";
+                    li.innerHTML = `
+                        <span class="font-mono text-gray-600 font-medium">${id}</span>
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    `;
+                    li.onclick = () => {
+                        navigator.clipboard.writeText(id);
+                        // Optional tiny feedback
+                        li.style.backgroundColor = '#dbeafe';
+                        setTimeout(() => li.style.backgroundColor = '', 200);
+                    };
+                    historyList.appendChild(li);
+                });
+            } else {
+                historyPanel.classList.add('hidden');
+            }
+        }
+
+        clearHistoryBtn.addEventListener('click', () => {
+            localStorage.removeItem('serialHistory');
+            updateHistoryUI();
+        });
+
+        updateHistoryUI();
+
+        // --- Data Mappings ---
+        const EVENT_TYPES = {
+            "BLS": "1",
+            "Soft Skills": "2",
+            "Intern": "3",
+            "Pre-internal": "4",
+            "ALS": "4",
+            "Fracture workshop": "5",
+            "Organizational workshop": "6",
+            "POT or TOT": "7",
+            "Psychiatry": "8",
+            "Orientation": "9",
+            "Seminar": "0",
+            "Campaign \"AIC\"": "11",
+            "Computer or Language course": "12"
+        };
+
+        const PARTICIPATION_TYPES = {
+            "Audience": "1",
+            "LC": "2",
+            "HR Representative": "11",
+            "PR Representative": "12",
+            "Media Representative": "13",
+            "Trainer": "3",
+            "Co-trainer": "4",
+            "Organization": "5",
+            "Facilitator or Instructor": "6",
+            "Certificate of Honor": "7"
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const yearEl = document.getElementById("year");
+            const eventTypeEl = document.getElementById("eventType");
+            const eventNumEl = document.getElementById("eventNum");
+            const partTypeEl = document.getElementById("partType");
+            const serialEl = document.getElementById("serial");
+            const generateBtn = document.getElementById("generateButton");
+            const resultEl = document.getElementById("result");
+            const copyBtn = document.getElementById("copyButton");
+            const errorEl = document.getElementById("error-message");
+
+            // Set current year
+            yearEl.value = new Date().getFullYear();
+
+            // Populate dropdowns
+            for (const [name, code] of Object.entries(EVENT_TYPES)) {
+                const option = document.createElement("option");
+                option.value = code;
+                option.textContent = name;
+                eventTypeEl.appendChild(option);
+            }
+
+            for (const [name, code] of Object.entries(PARTICIPATION_TYPES)) {
+                const option = document.createElement("option");
+                option.value = code;
+                option.textContent = name;
+                partTypeEl.appendChild(option);
+            }
+
+            // Event listeners
+            generateBtn.addEventListener("click", generateSerial);
+            copyBtn.addEventListener("click", copyToClipboard);
+
+            function generateSerial() {
+                errorEl.textContent = "";
+                resultEl.value = "Generating...";
+                resultEl.classList.remove("text-red-400");
+                resultEl.classList.add("text-white");
+
+                setTimeout(() => {
+                    try {
+                        const yearStr = yearEl.value.trim();
+                        if (!/^\d{2,}$/.test(yearStr)) throw new Error("Invalid Year. Must be at least 2 digits.");
+                        const yearCode = yearStr.slice(-2);
+
+                        const eventCode = eventTypeEl.value;
+                        if (!eventCode) throw new Error("Please select an Event Type.");
+
+                        const eventNumStr = eventNumEl.value.trim();
+                        if (!/^\d+$/.test(eventNumStr) || parseInt(eventNumStr) < 1) throw new Error("Invalid Event Number.");
+                        const eventNumCode = eventNumStr;
+
+                        const partCode = partTypeEl.value;
+                        if (!partCode) throw new Error("Please select a Participation Type.");
+
+                        const serialStr = serialEl.value.trim();
+                        if (!/^\d+$/.test(serialStr) || parseInt(serialStr) < 1) throw new Error("Invalid Serial Number.");
+                        const serialCode = serialStr.padStart(3, '0');
+
+                        const finalSerial = `${yearCode}${eventCode}${eventNumCode}${partCode}${serialCode}`;
+                        resultEl.value = finalSerial;
+
+                        // Save to History
+                        let history = JSON.parse(localStorage.getItem('serialHistory') || '[]');
+                        history.unshift(finalSerial);
+                        if (history.length > 5) history.pop(); // Keep last 5
+                        localStorage.setItem('serialHistory', JSON.stringify(history));
+                        updateHistoryUI();
+
+                        // Celebration!
+                        confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 }
+                        });
+
+                    } catch (e) {
+                        errorEl.textContent = e.message;
+                        resultEl.value = "Error";
+                        resultEl.classList.remove("text-white");
+                        resultEl.classList.add("text-red-400");
+                    }
+                }, 200);
+            }
+
+            function copyToClipboard() {
+                const serial = resultEl.value;
+                if (!serial || serial === "Waiting..." || serial === "Error") return;
+
+                navigator.clipboard?.writeText(serial).then(() => {
+                    const originalIcon = copyBtn.innerHTML;
+                    copyBtn.innerHTML = `<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                    setTimeout(() => copyBtn.innerHTML = originalIcon, 2000);
+                }).catch(() => {
+                    const temp = document.createElement('textarea');
+                    temp.value = serial;
+                    document.body.appendChild(temp);
+                    temp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(temp);
+                    errorEl.textContent = "Copied manually.";
+                    setTimeout(() => errorEl.textContent = "", 2000);
+                });
+            }
+        });
+
+        const processBtn = document.getElementById("processExcelBtn");
+        const fileInput = document.getElementById("uploadExcel");
+
+        processBtn.addEventListener("click", () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please upload an Excel file first!");
+                return;
+            }
+
+            const yearEl = document.getElementById("year");
+            const eventTypeEl = document.getElementById("eventType");
+            const eventNumEl = document.getElementById("eventNum");
+            const partTypeEl = document.getElementById("partType");
+            const serialEl = document.getElementById("serial");
+
+            let baseCodePrefix = "";
+            let startSerialInt = 1;
+            let fileName = "Attendance.xlsx";
+
+            try {
+                const yearStr = yearEl.value.trim();
+                const yearCode = yearStr.slice(-2);
+                const eventCode = eventTypeEl.value;
+                const eventNumStr = eventNumEl.value.trim();
+                const partCode = partTypeEl.value;
+                const serialStr = serialEl.value.trim();
+
+                startSerialInt = parseInt(serialStr);
+                baseCodePrefix = `${yearCode}${eventCode}${eventNumStr}${partCode}`;
+
+                const eventNameText = eventTypeEl.options[eventTypeEl.selectedIndex].text;
+                const partNameText = partTypeEl.options[partTypeEl.selectedIndex].text;
+                const safeEventName = eventNameText.replace(/[\/\\?%*:|"<>]/g, '-');
+                const safePartName = partNameText.replace(/[\/\\?%*:|"<>]/g, '-');
+
+                fileName = `${safePartName} - ${safeEventName} - ${eventNumStr}.xlsx`;
+
+            } catch (e) {
+                alert("Error in Form Data: " + e.message);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                const finalData = [];
+                finalData.push(["Name", "Serial", "DESC"]);
+
+                let counter = 0;
+                jsonData.forEach(row => {
+                    const name = row[0];
+                    if (name && typeof name === 'string' && name.trim() !== "") {
+                        const currentSerialNum = startSerialInt + counter;
+                        const currentSerialStr = currentSerialNum.toString().padStart(3, '0');
+                        const fullID = `${baseCodePrefix}${currentSerialStr}`;
+                        finalData.push([name.trim(), fullID, ""]);
+                        counter++;
+                    }
+                });
+
+                const newWs = XLSX.utils.aoa_to_sheet(finalData);
+                const newWb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(newWb, newWs, "Attendance");
+
+                XLSX.writeFile(newWb, fileName);
+
+                alert(`Done! File saved as: ${fileName}`);
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+
+</html>
